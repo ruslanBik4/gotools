@@ -1,0 +1,29 @@
+\bunit\b\s*(\w*); :: package {package_name}
+\buses\b([^;]*);? :: import ( \n "$1"
+(\w*)\s=\sclass\((\w*)\) :: type $1 struct {\n $2
+{\s*(\w*)\s*} :: // $1 struct converted
+\bfor\s*(\w*)\s:=([\s\S]*)to([\s\S]*)do :: for $1:=$2; $1 <= $3; $1++ {
+(?:constructor|destructor|function)\s*([^.]*)\.(\w*)(?:\((?:const\s)?([^)]*)\)?)?\s*:?([^;]*);? :: func (ref *$1) $2($3) $4 {
+^\s*const\b(\.*);? :: const $1
+(?:constructor|destructor|function)\s*([^(^:]*)(?:\((?:const\s)?([^)]*)\)?)?\s*:?\s*(\w*);? :: func $1($2) $3 {
+^(\s*)end[;.]? :: $1}
+^(\s*){$ :: /*
+^(\s*)}$ :: */
+if\s([\s\S]*)\sthen :: if $1 {
+else :: } else {
+^([\s\w]*)=([^;]*);?(\/\/\.*)?$ :: $1=$2
+^([\s\w]*):=([^;]*);?(\/\/\.*)? :: $1=$2
+^\s*(interface|type|implementation|private|protected|public|inherited;|override;)$  :: // $1
+#general rules
+\bbegin\b :: \s
+\bBoolean\b :: bool
+\sand\s ::  &&
+\sor\s ::  ||
+\snot\s ::   !
+Result\s*=(\.*)  :: return $1 //replace Result =
+\bTrue\b     ::  true
+\bFalse\b     ::  false
+\'([^']*)\'  :: `$1`
+^([^:]*):([^;]*); :: $1 $2
+try :: defer later()
+\b(finally|except)\b :: func later() {
