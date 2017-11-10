@@ -33,6 +33,8 @@ const (
 )
 func (d *Dictionary) readDict(fileName string) {
 	ioReader, err := os.Open(fileName)
+	defer ioReader.Close()
+
 	stat, err := ioReader.Stat()
 	if err != nil {
 		panic(err) // panic is used only as an example and is not otherwise recommended.

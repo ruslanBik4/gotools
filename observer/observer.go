@@ -53,6 +53,7 @@ func (o *Observer) doReplacers(line []byte) []byte {
 		for _, value := range dict.replacers {
 
 			if value.src.Match(line) {
+				value.repl = o.insertNames(value.repl)
 				subExp := value.src.SubexpNames()
 				for i, group := range subExp {
 					if group > "" {
@@ -70,17 +71,21 @@ func (o *Observer) doReplacers(line []byte) []byte {
 
 	return line
 }
+func (o *Observer) insertNames(line []byte) []byte{
+	for key, value := range o.names {
+		line = bytes.Replace(line, []byte(key), []byte(value), -1)
+	}
+
+	return line
+}
 func (o *Observer) write(ioWriter *os.File, line []byte) {
 	if string(line) == "" {
 		return
 	}
 	for _, dict := range o.dicts {
 		for key, value := range dict.genRules {
-			line = key.ReplaceAll(line, value)
+			line = key.ReplaceAll(line, o.insertNames(value))
 		}
-	}
-	for key, value := range o.names {
-		line = bytes.Replace(line, []byte(key), []byte(value), -1)
 	}
 	if o.enc == nil {
 		ioWriter.Write(line)

@@ -32,6 +32,7 @@ func doConvert(path string) {
 
 	wrgroup.Add(1)
 	defer wrgroup.Done()
+
 	switch ext {
 	case  ".pas":
 		dict = NewDictionary("dict/pas.dct")
@@ -59,7 +60,15 @@ func doConvert(path string) {
 
 		}
 	}
-	ioReader, _ := os.Open(path)
+	defer ioWriter.Close()
+
+	ioReader, err := os.Open(path)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer ioReader.Close()
+
 	obs.Parse(ioReader, ioWriter)
 
 }
