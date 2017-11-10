@@ -16,7 +16,7 @@ type Observer struct {
 	names map[string] string
 }
 func NewObserver(enc *Encoder, dict ... *Dictionary) *Observer {
-	return &Observer{enc: enc, dicts: dict, names: make(map[string]string,0)}
+	return &Observer{enc: enc, dicts: dict, names: map[string]string{"{indent}":"",}}
 }
 func (o *Observer) Parse(ioReader, ioWriter *os.File) {
 	stat, err := ioReader.Stat()
@@ -56,7 +56,11 @@ func (o *Observer) doReplacers(line []byte) []byte {
 				subExp := value.src.SubexpNames()
 				for i, group := range subExp {
 					if group > "" {
-						o.names["{" + group + "}"] = string( value.src.FindSubmatch(line)[i] )
+						if group == "indent" {
+							o.names["{"+group+"}"] = string(value.src.FindSubmatch(line)[i]) + "}\n"
+						} else {
+							o.names["{"+group+"}"] = string(value.src.FindSubmatch(line)[i])
+						}
 					}
 				}
 				return value.src.ReplaceAll(line, value.repl)

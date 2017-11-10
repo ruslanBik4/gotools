@@ -1,6 +1,6 @@
 from\s*([\w.]*)\s*import\s*([\w,\s]*) :: import "$1 $2"
-class\s*(?P<ClassName>\w*)\s*\((\w*)\): :: type $1 struct {\n $2
-\s*def\s*(\w*)\((?:self,?\s?)?([^)]*)\): :: } \n func (ref *{ClassName}) $1($2) {
+class\s*(?P<ClassName>\w*)\s*\((\w*)\): :: {indent}type $ClassName struct {\n    $2
+(?P<indent>\s*)def\s*(\w*)\((?:self,?\s?)?([^)]*)\): :: {indent}${1}func (ref *{ClassName}) $2($3) {
 if\s*(\w*)\s*is\s*None: :: if $1 == nil {
 if\s*(\w*)\s*is\s*not\s*None: :: if $1 != nil {
 raise\s*(\w*) :: panic(errors.New("$1"))
@@ -12,7 +12,7 @@ raise\s*(\w*) :: panic(errors.New("$1"))
 \bTrue\b     ::  true
 \bFalse\b     ::  false
 \.format\( :: fmt.Sprintf(
-__init__\( :: CreateClass(
+__init__\( :: New{ClassName}(
 """ :: `
 \b(\w*)=None([,)]) :: $1 string$2
 {" :: map[string] interface{} {"
