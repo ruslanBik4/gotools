@@ -13,9 +13,10 @@ import (
 type Observer struct {
 	enc *Encoder
 	dicts []*Dictionary
+	names map[string] string
 }
 func NewObserver(enc *Encoder, dict ... *Dictionary) *Observer {
-	return &Observer{enc: enc, dicts: dict}
+	return &Observer{enc: enc, dicts: dict, names: make(map[string]string,0)}
 }
 func (o *Observer) Parse(ioReader, ioWriter *os.File) {
 	stat, err := ioReader.Stat()
@@ -52,6 +53,12 @@ func (o *Observer) doReplacers(line []byte) []byte {
 		for _, value := range dict.replacers {
 
 			if value.src.Match(line) {
+				subExp := value.src.SubexpNames()
+				for i, group := range subExp {
+					if group > "" {
+						o.names["{" + group + "}"] = string( value.src.FindSubmatch(line)[i] )
+					}
+				}
 				return value.src.ReplaceAll(line, value.repl)
 			}
 		}
@@ -67,6 +74,9 @@ func (o *Observer) write(ioWriter *os.File, line []byte) {
 		for key, value := range dict.genRules {
 			line = key.ReplaceAll(line, value)
 		}
+	}
+	for key, value := range o.names {
+		line = bytes.Replace(line, []byte(key), []byte(value), -1)
 	}
 	if o.enc == nil {
 		ioWriter.Write(line)

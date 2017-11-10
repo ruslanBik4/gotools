@@ -1,0 +1,22 @@
+from\s*([\w.]*)\s*import\s*([\w,\s]*) :: import "$1 $2"
+class\s*(?P<ClassName>\w*)\s*\((\w*)\): :: type $1 struct {\n $2
+\s*def\s*(\w*)\((?:self,?\s?)?([^)]*)\): :: } \n func (ref *{ClassName}) $1($2) {
+if\s*(\w*)\s*is\s*None: :: if $1 == nil {
+if\s*(\w*)\s*is\s*not\s*None: :: if $1 != nil {
+raise\s*(\w*) :: panic(errors.New("$1"))
+^# :: //
+#general rules
+^\s*(@property|@abstractmethod|@staticmethod|super.*|object)$  :: // $1
+\bobject\b :: \s
+\bself\._* :: ref.
+\bTrue\b     ::  true
+\bFalse\b     ::  false
+\.format\( :: fmt.Sprintf(
+__init__\( :: CreateClass(
+""" :: `
+\b(\w*)=None([,)]) :: $1 string$2
+{" :: map[string] interface{} {"
+": None :: ": nil
+pass :: }
+
+

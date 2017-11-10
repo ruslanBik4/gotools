@@ -5,22 +5,26 @@
 package observer
 
 import (
-	"testing"
-	"os"
-	"path/filepath"
-	"strings"
 	"regexp"
+	"os"
+	"strings"
+	"path/filepath"
+	"testing"
 )
-const fFileName = "test.pas"
-func TestObserver_Parse(t *testing.T) {
 
-	dict := NewDictionary("dict/pas.dct")
+func TestObserver_Parse_Python(t *testing.T) {
+	const fFileName = "test.py"
+
+	dict := NewDictionary("dict/py.dct")
 	dict.genRules[regexp.MustCompile("{package_name}")] = []byte("test")
 	enc  := NewEncoder("win1251")
 	obs := NewObserver(enc, dict)
 	ioReader, _ := os.Open(fFileName)
 	ioWriter, _ := os.Create("temp/" + strings.TrimSuffix( filepath.Base(fFileName), filepath.Ext(fFileName)) +".go")
 
+	// insert package name self
+	ioWriter.Write([]byte("package test\n"))
 	obs.Parse(ioReader, ioWriter)
 
 }
+
