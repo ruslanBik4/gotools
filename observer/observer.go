@@ -56,12 +56,15 @@ func (o *Observer) doReplacers(line []byte) []byte {
 				value.repl = o.insertNames(value.repl)
 				subExp := value.src.SubexpNames()
 				for i, group := range subExp {
-					if group > "" {
-						if group == "indent" {
-							o.names["{"+group+"}"] = string(value.src.FindSubmatch(line)[i]) + "}\n"
-						} else {
+					switch group {
+					case "indent":
+							o.names["{"+group+"}"] =  "}\n"
+					case "indentNew":
+						o.names["{indent}"] =  "    return ref\n}\n"
+					case "":
+						continue
+					default:
 							o.names["{"+group+"}"] = string(value.src.FindSubmatch(line)[i])
-						}
 					}
 				}
 				return value.src.ReplaceAll(line, value.repl)

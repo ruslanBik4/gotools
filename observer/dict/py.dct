@@ -1,25 +1,45 @@
-from\s*([\w.]*)\s*import\s*([\w,\s]*) :: import "$1 $2"
-(?P<indent>\s*)class\s*(?P<ClassName>\w*)\s*\((\w*)\): :: {indent}${1}type $ClassName struct {\n$1    $3
-(?P<indent>\s*)def\s*(\w*)\((?:self,?\s?)?([^)]*)\): :: {indent}${1}func (ref *{ClassName}) $2($3) {
-if\s*(\w*)\s*is\s*None: :: if $1 == nil {
+from\s*[\w.]*exceptions\s*import\s*[\w.,]*exceptions :: \s
+from\s*datetime\s*import[^\$]* :: import "time"
+import\s*json :: import "encoding/json"
+from\s*threading\s*import\s*([\w,\s*]*) :: import "sync $2"
+from\s*([\w.]*)\s*import\s*([\w,.\s]*) :: import "$1 $2"
+import\s*([\w,.\s]*) :: import "$1"
+(super\(\w*,\s*self\).__init__\(([^)]*)\)) :: ref.$2 // $1
+(?P<indent>\s*)class\s*(?P<ClassName>\w*)\s*\((\w*)\): :: {indent}type $ClassName struct {\n$1    $3
+(?P<indentNew>\s*)def\s*__init__\((?:self,?\s?)?([^)]*)\): :: {indent}func New{ClassName}($2) *{ClassName} {\n$1    ref := &{ClassName}{}
+(?P<indent>\s*)def\s*(\w*)\((?:self,?\s?)?([^)]*)\): :: {indent}func (ref *{ClassName}) $2($3) {
+if\s*(\S*)\s*is\s*None\s*: :: if $1 == nil {
 if\s*(\w*)\s*is\s*not\s*None: :: if $1 != nil {
+if\s*(\w*)\s*in([^:]*): :: if val, ok := $2[$1]; ok {
+if\s*(\w*)\s*not in([^:]*): :: if val, ok := $2[$1]; !ok {
+if([^:]*): :: if $1 {
+else\s*:   :: } else {
+while\s*([^:]*): :: for $1 {
+for\s*(\w*),\s*(\w*)\s*in\s*([^:]*): :: for $1, $2 := range $3 {
 raise\s*(?:\w*(?:Error|Exception))?\(([^)]*)\) :: panic(errors.New($1))
-raise\s*([^)]*) :: panic(errors.New("$1"))
-=([^.]*)\.format\( :: = fmt.Sprintf($1,
+raise\s*([^)]*) :: panic(errors.New(`$1`))
+"([\s\S]*)"\.format\( :: fmt.Sprintf(`$1`,
+\bwith\b :: // with
 ^# :: //
+
 #general rules
 ^\s*(@property|@abstractmethod|@staticmethod|super.*|object)$  :: // $1
 \bobject\b :: \s
 \bself\._* :: ref.
 \bTrue\b     ::  true
 \bFalse\b     ::  false
-__init__\( :: New{ClassName}(
 """ :: `
-\b(\w*)=None([,)]) :: $1 string$2
+\b(\w*)=(True|False)([,)]) :: $1 bool /* $2 */
+\b(\w*)=None([,)]) :: $1 string$2 /* None */
 {" :: map[string] interface{} {"
 ": None :: ": nil
-\bpass\b :: }
+\bpass\b :: \s
 {\d+} :: %s
 Utils.quote_key :: strconv.Quote
-
-
+del\s*(\w*) :: delete($1)
+try: :: defer later()
+\bfinally\s*: :: func later() {\n    }
+\bexcept\b([^:]*): :: func later() {\n//$1\n}
+'([^']*)' :: "$1"
+os.getcwd() :: os.Getwd()
+(func[\s\S]*)\*{2}kwargs\)  :: $1 kwargs map[string] interface{})
