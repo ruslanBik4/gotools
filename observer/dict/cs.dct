@@ -9,6 +9,7 @@ for\(int\s*(\w*)\s*=\s*(\d*);([^)]*)\) :: for $1 := $2; #3 {
 (try|catch) :: // $1
 throw\s*new\s*(?:\w*Exception)?\(([^)]*)\) :: panic(errors.New($1))
 (\s*)var\s*(\w*)\s*=\s*([\S]*)\s*\?{2}\s*([^;]*); :: $1$2 := $3 \n${1}if $2 == nil {\n$1    $2 = $3 \n${1}}
+(\s*)return\s*\s*([\S]*)\s*\?{2}\s*([^;]*) :: ${1}if $2 != nil {\n$1    return $2 \n${1}}\n\n${1}return $3
 ^# :: //#
 
 #general rules
