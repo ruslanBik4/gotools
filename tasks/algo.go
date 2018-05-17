@@ -60,6 +60,24 @@ func findAvgElement(list *linkedList) {
 	}
 
 }
+//А если LinkedList зациклен?
+func findAvgElementSave(list *linkedList) {
+	link1, link2 := list, list
+
+	i := 0
+	for link1.link != nil {
+		link1 = link1.link
+		if i == 1 {
+			link2 = link2.link
+		}
+		i = 1 - i
+		if link1.link == link2.link {
+			break
+		}
+	}
+
+}
+
 // Простейший триггер
 // выдает значения 0, если передан 1
 // 1, если передан 0
