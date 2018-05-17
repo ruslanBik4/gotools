@@ -1,6 +1,7 @@
 from\s*[\w.]*exceptions\s*import\s*[\w.,]*exceptions :: \s
 from\s*datetime\s*import[^\$]* :: import "time"
 import\s*json :: import "encoding/json"
+import\sOpenSSL\.crypto :: import "crypto/x509"
 from\s*threading\s*import\s*([\w,\s*]*) :: import "sync $2"
 from\s*([\w.]*)\s*import\s*([\w,.\s]*) :: import "$1 $2"
 import\s*([\w,.\s]*) :: import "$1"
@@ -16,13 +17,16 @@ if([^:]*): :: if $1 {
 else\s*:   :: } else {
 while\s*([^:]*): :: for $1 {
 for\s*(\w*),\s*(\w*)\s*in\s*([^:]*): :: for $1, $2 := range $3 {
+for\s*(\w*)\s*in\s*([^:]*): :: for $1 := range $2 {
+^(\s*)(\w*)\s*=\s*sum\((\d+)\s*for\s*(\w*)\s*in\s*([\S]*)\s(.*)\)$ :: $1$2 := $3 \n${1}for $4 := range $5 {\n$1    $6 {\n$1    $2 += $4\n$1    }\n${1}}
 raise\s*(?:\w*(?:Error|Exception))?\(([^)]*)\) :: panic(errors.New($1))
 raise\s*([^)]*) :: panic(errors.New(`$1`))
 "([\s\S]*)"\.format\( :: fmt.Sprintf(`$1`,
 \bwith\b :: // with
-^# :: //
+^(\s*)# :: $1//
 
 #general rules
+\belif\b :: } else if
 ^\s*(@property|@abstractmethod|@staticmethod|super.*|object)$  :: // $1
 \bobject\b :: \s
 \bself\._* :: ref.
@@ -37,9 +41,9 @@ raise\s*([^)]*) :: panic(errors.New(`$1`))
 {\d+} :: %s
 Utils.quote_key :: strconv.Quote
 del\s*(\w*) :: delete($1)
-try: :: defer later()
-\bfinally\s*: :: func later() {\n    }
-\bexcept\b([^:]*): :: func later() {\n//$1\n}
+try: :: defer later() // try
+\bfinally\s*: :: func later() {\n    } // finally
+\bexcept\b([^:]*): :: func later() {\n//$1\n} //except
 '([^']*)' :: "$1"
 os.getcwd() :: os.Getwd()
 (func[\s\S]*)\*{2}kwargs\)  :: $1 kwargs map[string] interface{})

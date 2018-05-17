@@ -1,0 +1,20 @@
+(?:public)?\s*(?:function|procedure)\s*(\w+)(?:\(([^)]*)\)?)?\s*:?([^;]*);? :: func $1($2) $3 {
+foreach\s*\(\$(\w*)\s*as\s*\$(\w*)\) :: for _, $2 := range $1 {
+foreach\s*\(\$(\w*)\s*as\s*\$(\w*)\s*=>\s*\$(\w*)\) :: for $3, $2 := range $1 {
+echo :: fmt.PrintLn(
+=\s*new\s*([^_]*)_constructor\( ::  := New$1(
+#general rules
+\$(\w*) :: $1
+\$?this\b :: ref
+->  :: .
+;$ :: \s
+count\(\$?(\w*)\) :: len($1)
+'([^']*)' :: "$1"
+\sAND\s ::  &&
+\sOR\s ::  ||
+\sNOT\s ::   !
+\bexplode\("([^"]*)",\s*([\w($)]*)\) :: strings.Split($2, "$1")
+\btrim\(([^)]*)\) :: strings.TrimSpace($1)
+FALSE :: false
+TRUE  :: true
+

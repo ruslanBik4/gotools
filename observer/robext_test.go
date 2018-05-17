@@ -12,11 +12,14 @@ import (
 	"log"
 	"testing"
 	"sync"
-	"regexp"
 )
 const srcPath = "/Users/ruslan/work/RobExt/pas/"
 const dstPath = "/Users/ruslan/work/src/bitbucket.org/goext/"
-var wrgroup  sync.WaitGroup
+var (
+	wrgroup  sync.WaitGroup
+	dictPas *Dictionary
+	enc *Encoder
+)
 func Workfunc(path string, typeFile os.FileMode) error{
 	if typeFile.IsDir() {
 		return nil
@@ -26,27 +29,19 @@ func Workfunc(path string, typeFile os.FileMode) error{
 	return nil
 }
 func doConvert(path string) {
-	var dict *Dictionary
+
 	ext := filepath.Ext(path)
+	if ext != ".pas" {
+		return
+	}
+
 	newPath := strings.TrimSuffix( strings.TrimPrefix( path, srcPath ), ext)
 
 	wrgroup.Add(1)
 	defer wrgroup.Done()
 
-	switch ext {
-	case  ".pas":
-		dict = NewDictionary("dict/pas.dct")
-		listDir := strings.Split(filepath.Dir(newPath), "/")
-		log.Println(listDir)
-		dict.genRules[regexp.MustCompile("{package_name}")] = []byte(listDir[len(listDir)-1])
-	case "py":
-		dict = NewDictionary("dict/py.dct")
-	default:
-		return
-	}
-	enc  := NewEncoder("win1251")
-	obs := NewObserver(enc, dict)
-
+	listDir := strings.Split(filepath.Dir(newPath), "/")
+	log.Println(listDir)
 	newFilename := filepath.Join(dstPath, newPath + ".go")
 
 	log.Println(newFilename)
@@ -62,6 +57,7 @@ func doConvert(path string) {
 	}
 	defer ioWriter.Close()
 
+
 	ioReader, err := os.Open(path)
 	if err != nil {
 		log.Println(err)
@@ -69,10 +65,20 @@ func doConvert(path string) {
 	}
 	defer ioReader.Close()
 
+	//insert package name
+	if len(listDir) > 0 {
+		if _, err := ioWriter.WriteString("package " + strings.TrimSpace(listDir[len(listDir)-1]) + "\r\n"); err != nil {
+			log.Println(err)
+		}
+	}
+	obs := NewObserver(enc, dictPas)
 	obs.Parse(ioReader, ioWriter)
 
 }
 func TestObserver_Parse2(t *testing.T) {
+
+	enc = NewEncoder("win1251")
+	dictPas = NewDictionary("dict/pas.dct")
 
 	err := imports.FastWalk(srcPath, Workfunc)
 	log.Println(err)

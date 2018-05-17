@@ -8,15 +8,25 @@ import (
 	"os"
 	"bytes"
 	"log"
+	"regexp"
+	"strings"
+	"sync"
 )
 
 type Observer struct {
-	enc *Encoder
+	enc   *Encoder
 	dicts []*Dictionary
-	names map[string] string
+	names map[string]string
+	ifs   map[string] bool
+	lock  sync.RWMutex
 }
 func NewObserver(enc *Encoder, dict ... *Dictionary) *Observer {
-	return &Observer{enc: enc, dicts: dict, names: map[string]string{"{indent}":"",}}
+	return &Observer{
+		enc:   enc,
+		dicts: dict,
+		names: map[string]string{"{indent}": "",},
+		ifs: map[string]bool{},
+	}
 }
 func (o *Observer) Parse(ioReader, ioWriter *os.File) {
 	stat, err := ioReader.Stat()
@@ -52,29 +62,73 @@ func (o *Observer) doReplacers(line []byte) []byte {
 	for _, dict := range o.dicts {
 		for _, value := range dict.replacers {
 
+			repl, valid := o.validIfs(value.repl)
+			if !valid {
+				continue
+			}
+
 			if value.src.Match(line) {
-				value.repl = o.insertNames(value.repl)
+				repl = o.insertNames(repl)
 				subExp := value.src.SubexpNames()
 				for i, group := range subExp {
 					switch group {
 					case "indent":
-							o.names["{"+group+"}"] =  "}\n"
+							o.writeName("{"+group+"}", "}\n")
 					case "indentNew":
-						o.names["{indent}"] =  "    return ref\n}\n"
+						o.writeName("{indent}", "    return ref\n}\n")
 					case "":
 						continue
 					default:
-							o.names["{"+group+"}"] = string(value.src.FindSubmatch(line)[i])
+						if strings.HasPrefix(group, "is") {
+							o.writeIfs(strings.TrimPrefix(group, "is"))
+						} else {
+							o.writeName("{"+group+"}", string(value.src.FindSubmatch(line)[i]))
+						}
 					}
 				}
-				return value.src.ReplaceAll(line, value.repl)
+				return value.src.ReplaceAll(line, repl)
 			}
 		}
 	}
 
 	return line
 }
+func (o *Observer) writeIfs(key string)  {
+	o.lock.Lock()
+	defer o.lock.Unlock()
+	if strings.HasPrefix(key, "Not") {
+		o.ifs[strings.TrimPrefix(key, "Not")] = false
+	} else {
+		o.ifs[key] = true
+	}
+}
+var containtIfs = regexp.MustCompile(`\{\{\w*\}\}`)
+func (o *Observer) validIfs(line []byte) ([]byte, bool){
+	if len(o.ifs) == 0 {
+		return line, true
+	}
+	o.lock.Lock()
+	defer o.lock.Unlock()
+
+	for key, value := range o.ifs {
+		keyWord := []byte("{{" + key + "}}")
+		if bytes.Contains(line, keyWord) {
+			return bytes.Replace(line, keyWord, []byte(""), -1), value
+		}
+	}
+
+	return line, !containtIfs.Match(line)
+}
+
+func (o *Observer) writeName(key, value string)  {
+	o.lock.Lock()
+	defer o.lock.Unlock()
+	o.names[key] = value
+}
 func (o *Observer) insertNames(line []byte) []byte{
+	o.lock.Lock()
+	defer o.lock.Unlock()
+
 	for key, value := range o.names {
 		line = bytes.Replace(line, []byte(key), []byte(value), -1)
 	}
@@ -86,9 +140,13 @@ func (o *Observer) write(ioWriter *os.File, line []byte) {
 		return
 	}
 	for _, dict := range o.dicts {
-		for key, value := range dict.genRules {
-			line = key.ReplaceAll(line, o.insertNames(value))
-		}
+		dict.LockIteration( func (key *regexp.Regexp, value []byte) bool {
+			repl, valid := o.validIfs(value)
+			if valid {
+				line = key.ReplaceAll(line, o.insertNames(repl))
+			}
+			return true
+		} )
 	}
 	if o.enc == nil {
 		ioWriter.Write(line)

@@ -1,29 +1,79 @@
-\bunit\b\s*(\w*); :: package {package_name}
-\buses\b([^;]*);? :: import ( \n "$1"
-(\w*)\s=\sclass\((\w*)\) :: type $1 struct {\n $2
+^\s*{\$ :: // {$
+\bunit\s*(\w*); :: // unit $1
+\buses\b(?P<isImport>$) :: import (
+\buses\b([^;]+);?(?P<isImport>$) :: import ( \n "$1"
+(\w*)\s=\sclass(\(TObject\))?$ :: type $1 struct {
+(?P<ClassName>\w*)\s=\sclass\((\w*)\) :: type $1 struct {\n $2
+(\w*)\s*=\s*packed\s*record :: type $1 struct {\n
 {\s*(\w*)\s*} :: // $1 struct converted
-\bfor\s*(\w*)\s:=([\s\S]*)to([\s\S]*)do :: for $1:=$2; $1 <= $3; $1++ {
-(?:constructor|destructor|function)\s*([^.]*)\.(\w*)(?:\((?:const\s)?([^)]*)\)?)?\s*:?([^;]*);? :: func (ref *$1) $2($3) $4 {
+\bfor\s*(\w*)\s*:=([\s\S]*)to([\s\S]*)do :: for $1 :=$2; $1 <=$3; $1++ {
+\bwhile([\s\S]*)do :: for $1 { // while
+\brepeat\b :: for true { // repeat
+^(\s*)until\s*([^;]*); :: if $1 {\n$1 break \n$1} // until \n}
+constructor\s*([^.]*)\.(\w*)(?:\((?:const\s)?([^)]*)\)?)?\s*;?(?P<isMethods>$) :: func New$1($3) *$1 {\n ref := &$1{}
+(?:destructor|function|procedure)\s*([^.]+)\.(\w+)(?:\((?:const\s)?([^)]*)\)?)?\s*:?([^;]*);? :: func (ref *$1) $2($3) $4 {
+(\w+)\s*=\s*(?:function|procedure)\s*(?:\((?:const\s)?([^)]*)\)?)?\s*:?([^;]*)?; :: type $1 = func ($2) $3
 ^\s*const\b(\.*);? :: const $1
-(?:constructor|destructor|function)\s*([^(^:]*)(?:\((?:const\s)?([^)]*)\)?)?\s*:?\s*(\w*);? :: func $1($2) $3 {
+(?:constructor|destructor|function|procedure)\s*([^(^:]+)(?:\((?:const\s)?([^)]*)\)?)?\s*:?\s*(\w*);? :: func $1($2) $3 {
 ^(\s*)end[;.]? :: $1}
 ^(\s*){$ :: /*
 ^(\s*)}$ :: */
 if\s([\s\S]*)\sthen :: if $1 {
 else :: } else {
+GetMem :: // GetMem
 ^([\s\w]*)=([^;]*);?(\/\/\.*)?$ :: $1=$2
-^([\s\w]*):=([^;]*);?(\/\/\.*)? :: $1=$2
-^\s*(interface|type|implementation|private|protected|public|inherited;|override;)$  :: // $1
+(\w*\s*:=\s*TMemoryStream.Create) :: // $1
+([\s\S]*):=\s*([^;]*); :: $1= $2
+^\s*(interface|type|implementation|private|protected|public|inherited|override);?$  :: // $1
+initialization :: func init() {
+\b(break|continue)\s*; :: $1
+Inc\((\w*)\);? :: $1++
+Exit;? :: return
+(\w*)\.Free;?  :: $1 = nil // Free
+FreeAndNil\((\w*)\);?  :: $1 = nil // FreeAndNil
+on\s+E\s+:\s+Exception\s+do :: E := errors.New("")
+\b(finally|except)\b :: func later() { // $1
+raise; :: return E
+raise([^;]*); :: return $1
+WriteLog\(([^,]*),\s*\[([^]]*)]\s*\)\s*; :: log.Printf($1, $2)
+WriteLog\(([^,]*),    :: log.Printf($1,
+\[([^]]*)]\s*\) ::  $1)
+^([^:]*):([^;=]*); :: $1 $2
+^(\s*(?:\w*,\s*)*)(\w+)(\{[^}]*})?;(?P<isNotImport>$) ::  $1 "$2"\n){{Import}}
+((\w+),)+  ::  "$2"\n{{Import}}
 #general rules
+\n$ :: \s
+\n\s+(\w+); ::  \n"$1"\n)
 \bbegin\b :: \s
-\bBoolean\b :: bool
+\b[Bb]oolean\b :: bool
+\b[Ii]nteger\b :: int
 \sand\s ::  &&
 \sor\s ::  ||
 \snot\s ::   !
-Result\s*=(\.*)  :: return $1 //replace Result =
+Result\s*=([\s\S]*)  :: return $1 //replace Result =
+Format\(([^.]*),\s*\[([^]]*)]\s*\) :: fmt.Sprintf($1, $2)
+Format\(([^.]*), :: fmt.Sprintf($1,
 \bTrue\b     ::  true
 \bFalse\b     ::  false
 \'([^']*)\'  :: `$1`
-^([^:]*):([^;]*); :: $1 $2
-try :: defer later()
-\b(finally|except)\b :: func later() {
+try :: defer later() // try
+\bPointer\b :: interface{}
+\b(property|override)\b :: // $1
+"?exceptionunit[",] :: "errors"
+"?SysUtils[",] :: "bytes"
+"?Classes[",] :: "bytes"
+"?(Classes|Windows)[,"] :: // $1
+;$ :: \s
+\b(F[A-Z]\w*) :: {{Methods}}ref.$1
+:?\s*TMemoryStream\b ::  bytes.Buffer
+:?\s*TStream\b ::  io.ReadWriter
+:?\s*TSocket\b ::  net.Conn
+:?\s*TList\b   ::  [] net.Conn
+(F\w*Buffer)\.Clear; :: $1.Reset()
+^\s*(\w*);$ :: $1()
+("?\w*BaseClassUnit[",])+ :: "bitbucket.org/goext/EXTShared/base"\n
+("?\w*Packet\w*[",])+ :: "bitbucket.org/goext/EXTShared/packed"\n
+("?\w*Config\w*[",])+ :: "bitbucket.org/goext/EXTShared/config"\n
+("?Exchange\w*[",])+ :: "bitbucket.org/goext/EXTComm/Exchange"\n
+("?jan\w+[",]\s*)+ :: "bitbucket.org/goext/XMLTools"\n
+:?\s*(PAnsiChar|AnsiString) ::  string

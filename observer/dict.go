@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"os"
 	"bytes"
+	"sync"
 )
 
 type replacer struct {
@@ -17,7 +18,8 @@ type replacer struct {
 }
 type Dictionary struct {
 	replacers [] replacer
-	genRules map[*regexp.Regexp] []byte
+	genRules  map[*regexp.Regexp][]byte
+	lock      sync.RWMutex
 }
 func NewDictionary(fileName string) *Dictionary {
 	d := &Dictionary{}
@@ -76,4 +78,22 @@ func (d *Dictionary) readDict(fileName string) {
 			d.replacers = append(d.replacers, replacer{src: src, repl: repl})
 		}
 	}
+}
+func (dict *Dictionary) Write(name string, value []byte) {
+	dict.lock.Lock()
+	defer dict.lock.Unlock()
+	dict.genRules[regexp.MustCompile(name)] = value
+}
+func (dict *Dictionary) LockIteration( funcEval func( *regexp.Regexp, []byte) bool) {
+	dict.lock.RLock()
+	defer dict.lock.RUnlock()
+
+	for key, value := range dict.genRules {
+		if !funcEval(key, value) {
+			break
+		}
+	}
+}
+func (dict *Dictionary) UnLockIteration() {
+	dict.lock.RUnlock()
 }

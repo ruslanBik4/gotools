@@ -8,7 +8,7 @@ pyravendb.connection.requests_executor[^"]* :: github.com/ravendb-go-client/http
 pyravendb.connection.requests_helpers[^"]*  :: github.com/ravendb-go-client/connection
 set_response\(response\) :: GetResponseRaw(response *http.Response) (out []byte, err error)
 session([,)]) :: session *store.DocumentSession$1
-store([,)]) :: session *store.DocumentStore$1
+store([,)]) :: store *store.DocumentStore$1
 indexQuery, :: indexQuery IndexQuery,
 (min|max)_(\w*)\s*=\s*(\d*)([,)]) :: ${1}_$2 int /* $3 */ $4
 db_name([,)]) :: db_name string$1
@@ -19,3 +19,4 @@ path\s= :: path :=
 response.status_code :: response.StatusCode
 \s=\sUtils.string_to_datetime\(([^)]*)\) :: , err := time.Parse("2006-01-02 15:04:05 -0700 MST", $1)
 response = response.json() :: response, err := Utils.ResponseToJSON(response)
+OpenSSL\.crypto\.get_cert_file_fingerprint\(([^)]*)\) :: Utils.GetCertFileFingerprint($1)
