@@ -7,10 +7,11 @@ package observer
 import (
 	"os"
 	"bytes"
-	"log"
+	"fmt"
 	"regexp"
 	"strings"
 	"sync"
+	"io/ioutil"
 )
 
 type Observer struct {
@@ -29,17 +30,11 @@ func NewObserver(enc *Encoder, dict ... *Dictionary) *Observer {
 	}
 }
 func (o *Observer) Parse(ioReader, ioWriter *os.File) {
-	stat, err := ioReader.Stat()
+	b, err := ioutil.ReadAll(ioReader)
 	if err != nil {
-		panic(err) // panic is used only as an example and is not otherwise recommended.
+		fmt.Println(err) // panic is used only as an example and is not otherwise recommended.
+		return
 	}
-
-	b := make([]byte, stat.Size())
-	n, err := ioReader.Read(b)
-	if err != nil {
-		panic(err) // panic is used only as an example and is not otherwise recommended.
-	}
-	log.Print(n)
 	b = bytes.Replace(b, []byte("\r\n"), []byte("\n"), -1)
 	slBytes := bytes.Split(b, []byte("\n"))
 
@@ -52,7 +47,7 @@ func (o *Observer) Parse(ioReader, ioWriter *os.File) {
 		if isComment(line) {
 			o.write(ioWriter, line)
 		} else {
-
+			line = o.putNamesInLine(line)
 			o.write(ioWriter, o.doReplacers(line) )
 		}
 		ioWriter.Write([]byte("\n"))
@@ -125,6 +120,22 @@ func (o *Observer) writeName(key, value string)  {
 	defer o.lock.Unlock()
 	o.names[key] = value
 }
+func (o *Observer) putNamesInLine(line []byte) []byte{
+	o.lock.Lock()
+	defer o.lock.Unlock()
+
+	for key, value := range o.names {
+		switch key {
+		case "indent", "indentNew", "":
+		  continue
+		}
+		if (value > "") && strings.Contains(string(line), " "+value) {
+			line = bytes.Replace(line, []byte(" "+value), []byte(" "+key), -1)
+		}
+	}
+
+	return line
+}
 func (o *Observer) insertNames(line []byte) []byte{
 	o.lock.Lock()
 	defer o.lock.Unlock()
@@ -135,6 +146,7 @@ func (o *Observer) insertNames(line []byte) []byte{
 
 	return line
 }
+var regForgroup = regexp.MustCompile(`forgroup\(([^)]*)\)`)
 func (o *Observer) write(ioWriter *os.File, line []byte) {
 	if string(line) == "" {
 		return
@@ -142,8 +154,18 @@ func (o *Observer) write(ioWriter *os.File, line []byte) {
 	for _, dict := range o.dicts {
 		dict.LockIteration( func (key *regexp.Regexp, value []byte) bool {
 			repl, valid := o.validIfs(value)
-			if valid {
-				line = key.ReplaceAll(line, o.insertNames(repl))
+			repl = o.insertNames(repl)
+			if regForgroup.Match(repl) {
+				replVal := regForgroup.Find(repl)
+				for _, val := range key.FindAllSubmatch(line, -1) {
+					for _, val := range val {
+						fmt.Println(string(val))
+						
+					}
+				}
+				line = key.ReplaceAll(line, regForgroup.ReplaceAll(repl, replVal) )
+			} else if valid {
+				line = key.ReplaceAll(line, repl)
 			}
 			return true
 		} )
