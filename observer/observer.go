@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"io/ioutil"
+	"unicode"
 )
 
 type Observer struct {
@@ -67,8 +68,11 @@ func (o *Observer) doReplacers(line []byte) []byte {
 				subExp := value.src.SubexpNames()
 				for i, group := range subExp {
 					switch group {
+					case "ClassName":
+						o.writeName("{indent}", "}\n")
+						o.writeName("{"+group+"}", string(value.src.FindSubmatch(line)[i]))
 					case "indent":
-							o.writeName("{"+group+"}", "}\n")
+							o.writeName("{"+group+"}", "")
 					case "indentNew":
 						o.writeName("{indent}", "    return ref\n}\n")
 					case "":
@@ -147,9 +151,65 @@ func (o *Observer) insertNames(line []byte) []byte{
 	return line
 }
 var regForgroup = regexp.MustCompile(`forgroup\(([^)]*)\)`)
+var regPublic = regexp.MustCompile(`([\S\s]*)public`)
 func (o *Observer) write(ioWriter *os.File, line []byte) {
 	if string(line) == "" {
 		return
+	}
+	if regPublic.Match(line) {
+		posSpace := 0
+		for i, val := range line {
+			if val != ' ' {
+				posSpace = i
+				break
+			}
+		}
+		lineForChange := line[posSpace:]
+
+		if bytes.HasPrefix(lineForChange, []byte("type") ) {
+			offset := len([]byte("type"))
+			for i, val := range bytes.TrimPrefix(lineForChange, []byte("type") ) {
+				if val != ' ' {
+					lineForChange[i+offset] = byte(unicode.ToUpper(rune(val)))
+					break
+				}
+			}
+		} else if bytes.HasPrefix(lineForChange, []byte("func") ) {
+			isSkip := false
+			offset := len([]byte("func"))
+			for i, val := range bytes.TrimPrefix(lineForChange, []byte("func") ) {
+				switch val {
+				case ' ':
+				case '(':
+					isSkip = true
+				case ')':
+					isSkip = false
+				default:
+					if isSkip {
+						break
+					}
+					lineForChange[i+offset] = byte(unicode.ToUpper(rune(val)))
+					offset = -1
+					break
+				}
+				if offset < 0{
+					break
+				}
+			}
+			fmt.Println(string(lineForChange))
+		} else {
+			for i, val := range lineForChange {
+				if val != ' ' {
+					lineForChange[i] = byte(unicode.ToUpper(rune(val)))
+					break
+				}
+			}
+		}
+		if posSpace > 0 {
+			line = append(line[:posSpace-1], lineForChange...)
+		} else {
+			line = lineForChange
+		}
 	}
 	for _, dict := range o.dicts {
 		dict.LockIteration( func (key *regexp.Regexp, value []byte) bool {

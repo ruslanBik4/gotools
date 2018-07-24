@@ -15,7 +15,7 @@ import (
 )
 
 const testJavaDir = "/Users/ruslan/java/src/github.com/tech-bureau/nem2-sdk-java/src"
-const dstJavaPath = "/Users/ruslan/work/src/github.com/482solutions/proximax"
+const dstGoRoot = "/Users/ruslan/work/src/github.com/482solutions/proximax/sdk"
 var wrgoupJava  sync.WaitGroup
 
 func TestObserver_Parse_Java(t *testing.T) {
@@ -43,6 +43,9 @@ func observeJavaDir(path string, typeFile os.FileMode) error {
 
 		return nil
 }
+var shrinkPaths = [] string {
+"main", "java", "io", "nem", "sdk", "io", "nem",
+}
 func doConvertJava(path string) {
 	defer wrgoupJava.Done()
 	ext := filepath.Ext(path)
@@ -54,8 +57,24 @@ func doConvertJava(path string) {
 	newPath := strings.TrimSuffix(strings.TrimPrefix(path, testJavaDir), ext)
 	
 	listDir := strings.Split(filepath.Dir(newPath), "/")
-	fmt.Println(listDir)
-	newFilename := filepath.Join(dstJavaPath, newPath+".go")
+	
+	fileName := filepath.Base(newPath) + ".go"
+	
+	newPath = dstGoRoot
+	for _, dir := range listDir {
+		var isShrink bool 
+		for _, val := range shrinkPaths {
+			isShrink = (dir == val)
+			if isShrink {
+				break
+			}
+		}
+		if !isShrink {
+			newPath = filepath.Join(newPath, dir)
+		}
+	}
+	
+	newFilename := filepath.Join(newPath, fileName)
 
 	fmt.Println(newFilename)
 	ioWriter, err := os.Create(newFilename)
@@ -80,6 +99,12 @@ func doConvertJava(path string) {
 	}
 	defer ioReader.Close()
 
+	//insert package name
+	if len(listDir) > 0 {
+		if _, err := ioWriter.WriteString("package " + strings.TrimSpace(listDir[len(listDir)-1]) + "\r\n"); err != nil {
+			fmt.Println(err)
+		}
+	}
 	obs := NewObserver(enc, dictPas)
 	obs.Parse(ioReader, ioWriter)
 }
