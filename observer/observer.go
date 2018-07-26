@@ -5,13 +5,13 @@
 package observer
 
 import (
-	"os"
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
-	"io/ioutil"
 	"unicode"
 )
 
@@ -19,15 +19,16 @@ type Observer struct {
 	enc   *Encoder
 	dicts []*Dictionary
 	names map[string]string
-	ifs   map[string] bool
+	ifs   map[string]bool
 	lock  sync.RWMutex
 }
-func NewObserver(enc *Encoder, dict ... *Dictionary) *Observer {
+
+func NewObserver(enc *Encoder, dict ...*Dictionary) *Observer {
 	return &Observer{
 		enc:   enc,
 		dicts: dict,
-		names: map[string]string{"{indent}": "",},
-		ifs: map[string]bool{},
+		names: map[string]string{"{indent}": ""},
+		ifs:   map[string]bool{},
 	}
 }
 func (o *Observer) Parse(ioReader, ioWriter *os.File) {
@@ -42,14 +43,14 @@ func (o *Observer) Parse(ioReader, ioWriter *os.File) {
 	for _, line := range slBytes {
 
 		// комментарии и пустые строки пропускаем
-		if (len(line) == 0) {
+		if len(line) == 0 {
 			continue
 		}
 		if isComment(line) {
 			o.write(ioWriter, line)
 		} else {
 			line = o.putNamesInLine(line)
-			o.write(ioWriter, o.doReplacers(line) )
+			o.write(ioWriter, o.doReplacers(line))
 		}
 		ioWriter.Write([]byte("\n"))
 	}
@@ -69,10 +70,11 @@ func (o *Observer) doReplacers(line []byte) []byte {
 				for i, group := range subExp {
 					switch group {
 					case "ClassName":
-						o.writeName("{indent}", "}\n")
-						o.writeName("{"+group+"}", string(value.src.FindSubmatch(line)[i]))
+						className := string(value.src.FindSubmatch(line)[i])
+						o.writeName("{indent}", "} /* "+className+" */ \n")
+						o.writeName("{"+group+"}", className)
 					case "indent":
-							o.writeName("{"+group+"}", "")
+						o.writeName("{"+group+"}", "")
 					case "indentNew":
 						o.writeName("{indent}", "    return ref\n}\n")
 					case "":
@@ -92,7 +94,7 @@ func (o *Observer) doReplacers(line []byte) []byte {
 
 	return line
 }
-func (o *Observer) writeIfs(key string)  {
+func (o *Observer) writeIfs(key string) {
 	o.lock.Lock()
 	defer o.lock.Unlock()
 	if strings.HasPrefix(key, "Not") {
@@ -101,8 +103,10 @@ func (o *Observer) writeIfs(key string)  {
 		o.ifs[key] = true
 	}
 }
+
 var containtIfs = regexp.MustCompile(`\{\{\w*\}\}`)
-func (o *Observer) validIfs(line []byte) ([]byte, bool){
+
+func (o *Observer) validIfs(line []byte) ([]byte, bool) {
 	if len(o.ifs) == 0 {
 		return line, true
 	}
@@ -119,28 +123,35 @@ func (o *Observer) validIfs(line []byte) ([]byte, bool){
 	return line, !containtIfs.Match(line)
 }
 
-func (o *Observer) writeName(key, value string)  {
+func (o *Observer) writeName(key, value string) {
 	o.lock.Lock()
 	defer o.lock.Unlock()
 	o.names[key] = value
 }
-func (o *Observer) putNamesInLine(line []byte) []byte{
+func (o *Observer) putNamesInLine(line []byte) []byte {
 	o.lock.Lock()
 	defer o.lock.Unlock()
 
 	for key, value := range o.names {
 		switch key {
 		case "indent", "indentNew", "":
-		  continue
+			continue
 		}
-		if (value > "") && strings.Contains(string(line), " "+value) {
-			line = bytes.Replace(line, []byte(" "+value), []byte(" "+key), -1)
+		if value > "" {
+			reg, err := regexp.Compile(`\b` + value + `\b`)
+			if err != nil {
+				fmt.Println(err)
+
+			} else if reg.Match(line) {
+				line = reg.ReplaceAll(line, []byte(" "+key+" "))
+				//fmt.Println(value)
+			}
 		}
 	}
 
 	return line
 }
-func (o *Observer) insertNames(line []byte) []byte{
+func (o *Observer) insertNames(line []byte) []byte {
 	o.lock.Lock()
 	defer o.lock.Unlock()
 
@@ -150,8 +161,10 @@ func (o *Observer) insertNames(line []byte) []byte{
 
 	return line
 }
+
 var regForgroup = regexp.MustCompile(`forgroup\(([^)]*)\)`)
 var regPublic = regexp.MustCompile(`([\S\s]*)public`)
+
 func (o *Observer) write(ioWriter *os.File, line []byte) {
 	if string(line) == "" {
 		return
@@ -166,18 +179,26 @@ func (o *Observer) write(ioWriter *os.File, line []byte) {
 		}
 		lineForChange := line[posSpace:]
 
-		if bytes.HasPrefix(lineForChange, []byte("type") ) {
+		if bytes.HasPrefix(lineForChange, []byte("type")) {
 			offset := len([]byte("type"))
-			for i, val := range bytes.TrimPrefix(lineForChange, []byte("type") ) {
+			for i, val := range bytes.TrimPrefix(lineForChange, []byte("type")) {
 				if val != ' ' {
 					lineForChange[i+offset] = byte(unicode.ToUpper(rune(val)))
 					break
 				}
 			}
-		} else if bytes.HasPrefix(lineForChange, []byte("func") ) {
+		} else if bytes.HasPrefix(lineForChange, []byte("interface")) {
+			offset := len([]byte("interface"))
+			for i, val := range bytes.TrimPrefix(lineForChange, []byte("interface")) {
+				if val != ' ' {
+					lineForChange[i+offset] = byte(unicode.ToUpper(rune(val)))
+					break
+				}
+			}
+		} else if bytes.HasPrefix(lineForChange, []byte("func")) {
 			isSkip := false
 			offset := len([]byte("func"))
-			for i, val := range bytes.TrimPrefix(lineForChange, []byte("func") ) {
+			for i, val := range bytes.TrimPrefix(lineForChange, []byte("func")) {
 				switch val {
 				case ' ':
 				case '(':
@@ -192,11 +213,10 @@ func (o *Observer) write(ioWriter *os.File, line []byte) {
 					offset = -1
 					break
 				}
-				if offset < 0{
+				if offset < 0 {
 					break
 				}
 			}
-			fmt.Println(string(lineForChange))
 		} else {
 			for i, val := range lineForChange {
 				if val != ' ' {
@@ -212,23 +232,26 @@ func (o *Observer) write(ioWriter *os.File, line []byte) {
 		}
 	}
 	for _, dict := range o.dicts {
-		dict.LockIteration( func (key *regexp.Regexp, value []byte) bool {
+		dict.LockIteration(func(key *regexp.Regexp, value []byte) bool {
 			repl, valid := o.validIfs(value)
 			repl = o.insertNames(repl)
-			if regForgroup.Match(repl) {
+			if bytes.Equal(repl, []byte("toLower")) && key.Match(line) {
+
+				line = bytes.ToLower(line)
+			} else if regForgroup.Match(repl) {
 				replVal := regForgroup.Find(repl)
 				for _, val := range key.FindAllSubmatch(line, -1) {
 					for _, val := range val {
 						fmt.Println(string(val))
-						
+
 					}
 				}
-				line = key.ReplaceAll(line, regForgroup.ReplaceAll(repl, replVal) )
+				line = key.ReplaceAll(line, regForgroup.ReplaceAll(repl, replVal))
 			} else if valid {
 				line = key.ReplaceAll(line, repl)
 			}
 			return true
-		} )
+		})
 	}
 	if o.enc == nil {
 		ioWriter.Write(line)
@@ -236,9 +259,10 @@ func (o *Observer) write(ioWriter *os.File, line []byte) {
 		ioWriter.Write(o.enc.Encoding(line))
 	}
 }
+
 // line is comment
 func isComment(line []byte) bool {
 	line = bytes.TrimSpace(line)
-	return bytes.HasPrefix(line, []byte("//")) ||
+	return bytes.HasPrefix(line, []byte("//")) || bytes.HasPrefix(line, []byte("* ")) ||
 		(bytes.HasPrefix(line, []byte("/*")) && bytes.HasSuffix(line, []byte("*/")))
 }

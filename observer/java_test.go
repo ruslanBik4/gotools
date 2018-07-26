@@ -5,21 +5,22 @@
 package observer
 
 import (
+	"fmt"
 	"golang.org/x/tools/imports"
 	"os"
-	"strings"
 	"path/filepath"
-	"testing"
-	"fmt"
+	"regexp"
+	"strings"
 	"sync"
+	"testing"
 )
 
 const testJavaDir = "/Users/ruslan/java/src/github.com/tech-bureau/nem2-sdk-java/src"
 const dstGoRoot = "/Users/ruslan/work/src/github.com/482solutions/proximax/sdk"
-var wrgoupJava  sync.WaitGroup
+
+var wrgoupJava sync.WaitGroup
 
 func TestObserver_Parse_Java(t *testing.T) {
-
 
 	fmt.Print("start")
 	enc = NewEncoder("win1251")
@@ -29,22 +30,40 @@ func TestObserver_Parse_Java(t *testing.T) {
 	err := imports.FastWalk(testJavaDir, observeJavaDir)
 	if err != nil {
 		t.Error(err)
-		
+
 	}
 	wrgroup.Wait()
 }
 
 func observeJavaDir(path string, typeFile os.FileMode) error {
-		if typeFile.IsDir() {
-			return nil
-		}
-		wrgoupJava.Add(1)
-		doConvertJava(path)
-
+	if typeFile.IsDir() {
 		return nil
+	}
+	wrgoupJava.Add(1)
+	doConvertJava(path)
+
+	return nil
 }
-var shrinkPaths = [] string {
-"main", "java", "io", "nem", "sdk", "io", "nem",
+
+var shrinkPaths = []string{
+	"main", "java", "io", "nem", "sdk", "io", "nem", "test",
+}
+var regIsTest = regexp.MustCompile(`(\w*)Test`)
+var regShrinkNames = regexp.MustCompile(`([A-Z]){1}([a-z]*)`)
+
+func fileNameConvert(fileName string) string {
+	if regIsTest.MatchString(fileName) {
+		fileName = regIsTest.ReplaceAllString(fileName, `${1}_test`)
+	}
+	i := 0
+	fileName = regShrinkNames.ReplaceAllStringFunc(fileName, func(z string) string {
+		if i > 0 {
+			z = "_" + z
+		}
+		i++
+		return strings.ToLower(z)
+	})
+	return fileName
 }
 func doConvertJava(path string) {
 	defer wrgoupJava.Done()
@@ -53,16 +72,19 @@ func doConvertJava(path string) {
 		return
 	}
 
-
 	newPath := strings.TrimSuffix(strings.TrimPrefix(path, testJavaDir), ext)
-	
+
 	listDir := strings.Split(filepath.Dir(newPath), "/")
-	
-	fileName := filepath.Base(newPath) + ".go"
-	
+
+	fileName := filepath.Base(newPath)
+
+	if fileName == "." {
+		return
+	}
+
 	newPath = dstGoRoot
 	for _, dir := range listDir {
-		var isShrink bool 
+		var isShrink bool
 		for _, val := range shrinkPaths {
 			isShrink = (dir == val)
 			if isShrink {
@@ -73,10 +95,9 @@ func doConvertJava(path string) {
 			newPath = filepath.Join(newPath, dir)
 		}
 	}
-	
-	newFilename := filepath.Join(newPath, fileName)
 
-	fmt.Println(newFilename)
+	newFilename := filepath.Join(newPath, fileNameConvert(fileName)+".go")
+
 	ioWriter, err := os.Create(newFilename)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -87,7 +108,7 @@ func doConvertJava(path string) {
 		}
 		if err != nil {
 			fmt.Println(err)
-			return 
+			return
 		}
 	}
 	defer ioWriter.Close()
@@ -99,12 +120,11 @@ func doConvertJava(path string) {
 	}
 	defer ioReader.Close()
 
+	obs := NewObserver(enc, dictPas)
 	//insert package name
 	if len(listDir) > 0 {
-		if _, err := ioWriter.WriteString("package " + strings.TrimSpace(listDir[len(listDir)-1]) + "\r\n"); err != nil {
-			fmt.Println(err)
-		}
+		obs.writeName("{packageName}", strings.TrimSpace(listDir[len(listDir)-1]))
 	}
-	obs := NewObserver(enc, dictPas)
+	obs.writeName("{pathRepo}", "github.com/proximax/nem2-go-sdk")
 	obs.Parse(ioReader, ioWriter)
 }
