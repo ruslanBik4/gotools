@@ -1,0 +1,72 @@
+package\s*(\w*\.)*(\w*\.\*)+; :: package {packageName} /* $1 */
+package\s*(?:\w*\.)*([^;]+)(\.\*)?; :: package {packageName} /* $1 */
+import\s*java.core.(util|text).([^;]+); :: import "{pathRepo}/sdk/$1" //$2
+import\s*io.nem.sdk.model.([^.]*).([^;]+); :: import "{pathRepo}/sdk/model/$1" //$2
+import\s*io.nem.core.crypto.([^;]+); :: import "{pathRepo}/sdk/core/crypto" //$1"
+import (org|com).([^;]*); :: // import $1.$2
+import (java.util.Arrays|java.math.BigInteger|java.nio.ByteBuffer|java.nio.ByteOrder|java.util.Objects|java.util.(ArrayList|List|Optional)) :: // import $1
+import (?:static)?\s*org.bouncycastle.util.encoders.Hex; :: import "encoding/hex"
+#import\s*(?:\w*\.)*([^;]+); :: import "$1"
+((?:(?:public|private|abstract|final)\s*)*)\s*enum\s*(?P<ClassName>\w+)\s*{ :: type $ClassName struct { /* $1 */  \n    $5  $4
+((?:(?:public|private|abstract|final)\s*)*)(\s*)class\s*(?P<ClassName>\w+)\s*(\([^)]*\))?\s*(\w*\s*\w*)?\s*{ :: type $ClassName struct { /* $1 */  \n    $5  $4
+((?:(?:public|private|abstract|final)\s*)*)(\s*)interface\s*(?P<ClassName>\w+)\s*(\([^)]*\))?\s*(\w*\s*\w*)?\s*{ :: interface $ClassName struct { /* $1 */  \n    $5  $4
+#(?P<indentNew>\s*)((?:(?:public|protected)\s)+)\s*{ClassName}\s*\(\)\s*{ :: {indent}func New{ClassName} ($2) *{ClassName} {  /* $1 */ \n    ref := &{ClassName}{
+(?P<indentNew>\s*)((?:(?:public|protected)\s)+)\s*{ClassName}\s*\(([^)]*)\)\s*{ :: {indent}func New{ClassName} ($3) *{ClassName} {  /* $2 */ \n    ref := &{ClassName}{
+((?:(?:public|private|virtual|protected|abstract|final|override|event|static)\s)+)(\w*\s*)([^(]*)\(\)\s*{ :: func (ref *{ClassName}) $3() $2 { /* $1 */  \n
+((?:(?:public|private|virtual|protected|abstract|final|override|event|static)\s)+)\s*(\w*)?\s*{ClassName}\s*\(([^)]*)?\)\s*{ :: func (ref *{ClassName}) $2($3) { /* $1 */  \n
+((?:(?:public|private|virtual|protected|abstract|final|override|event|static)\s)+)\s*(static)?\s*{ClassName}\s*(\w*)\s*\(([^)]*)?\)\s*{ :: func (ref *{ClassName}) $4($5) $3 { /* $1 $2 */
+((?:(?:public|private|virtual|protected|abstract|final|override|event|static)\s)+)\s*(\S*)\s*\(([^)]*)?\)\s*{ :: func (ref *{ClassName}) $2($3) { /* $1 */  \n
+((?:(?:public|private|virtual|protected|abstract|final|override|event|static)\s)+)\s*(\S*)\s*(\S*)?\s*\(([^)]*)?\)\s*{ :: func (ref *{ClassName}) $3($4) $2 { /* $1 */  \n
+((?:(?:public|private|virtual|protected|abstract|final)\s*)+)\s*(\S*)\s*([^;]+); :: $3 $2 // $1 \n
+this\.\w+\s*=\s*([^;]*); :: $1,
+this\(([\s\S]*)\) :: $1,
+for\(int\s*(\w*)\s*=\s*(\d*);([^)]*)\) :: for $1 := $2; #3 {
+(for\(\s*;\s*;\s*\))|while :: for true {
+if\s*(\S*)\s*is\s*None\s*: :: if $1 == nil {
+if\s*(\w*)\s*is\s*not\s*None: :: if $1 != nil {
+if\s*(\w*)\s*in([^:]*): :: if val, ok := $2[$1]; ok {
+if\s*(\w*)\s*not in([^:]*): :: if val, ok := $2[$1]; !ok {
+if([^:]*): :: if $1 {
+else\s*:   :: } else {
+(try|catch) :: // $1
+throw\s*new\s*(\w*)\s*\(\s*("[^"]*")\); :: panic($1{$2})
+(\s*)var\s*(\w*)\s*=\s*([\S]*)\s*\?{2}\s*([^;]*); :: $1$2 := $3 \n${1}if $2 == nil {\n$1    $2 = $3 \n${1}}
+(\s*)return\s*\s*([\S]*)\s*\?{2}\s*([^;]*) :: ${1}if $2 != nil {\n$1    return $2 \n${1}}\n\n${1}return $3
+(?P<indent>\s*)} :: }\n{indent}
+(\s*)return([^?]*)\?([^:]*)\:(.*) :: $1 if $2 { \n $1 return $3 \n $1 }\n $1 return $4
+
+#general rules
+null :: nil
+^\s*(@property|@abstractmethod|@staticmethod|@Override|@Test|@FunctionalInterface|@SerializedName|@javax.annotation|@ApiModelProperty|@SuppressWarnings)  :: // $1
+@NotNull :: /*$1*/
+void :: \s
+;$  :: \s
+this :: ref
+func(\s*(?:\(ref[\s\S]*\))?\s*\w*\s*)\((\S+)\s([^),/]*)\)([^{(]*){ :: func${1}/**/($3 ${2})${4}{
+#func(\s*\([^)]*\)[^(]*)\((?:(final\s))(\w*)\s*([^),]*)\)([^{]*){ :: func${1}($4 /*$2*/ $3)$5{
+#func(\s*[^(]*)\((\S*)\s([^),]*)\)([^{]*){ :: func${1}($3 ${2})${4}{
+#func([^(]*)\((?:(final\s)?)(\w*)\s*([^),]*)\)([^{]*){  :: func${1}($4 /*$2*/ $3)$5{
+#func([^(]*)\((\w*)\s([^),]*)\)([^{]*){:: func${1}($4 /*$2*/ $3)$5{
+#func\s*New{ClassName}\s*\(((\w+)\s*(\w+)*)\)\s*{ :: func New{ClassName} ( forgroup($2,$1) ){
+\b(\w*)\s*\[\] :: []$1
+double :: float64
+(extends|implements)\s*(\S*) :: $2 // $1
+Optional<(\w*)> :: $1 /*Optional { if $1 == nil {  panic(errors.New("$1 is nil!")) } */
+List<(\w*)> :: []$1 /* List */
+^\s*import\s*"([^;]*)"\s*$ :: toLower
+new\s+(\w+)\( :: New$1(
+new\s{ClassName}\( :: New{ClassName}(
+\bstring\. :: strings.
+(\*)?\bString\b :: ${1}string
+(\*)?\bBigInteger\b :: ${1}int64
+(\*)?\bInteger\b :: $1int
+(\*)?\bUInt64(DTO)?\b :: ${1}uint64 /*$2*/
+(\*)?\bInt64(DTO)?\b :: ${1}int64 /$2*/
+(\*)?\bboolean\b :: ${1}bool
+(\*)?\bByteBuffer\b :: ${1}bytes.Buffer
+(\*)?\bObject\b :: interface{}
+(!)?\(?(\w+)\s*instanceof\s*{ClassName}\)? :: _, ok := $2.({ClassName}); ${1}ok
+\b{ClassName}\b :: {ClassName}
+
+
+
