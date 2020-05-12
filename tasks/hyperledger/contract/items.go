@@ -116,11 +116,11 @@ func NewItemContext(ctx *contractapi.TransactionContext) ItemContext {
 	}
 }
 
-func (i ItemContext) UnmarshalJSON(b []byte) error {
+func (i *ItemContext) UnmarshalJSON(b []byte) error {
 	dto := struct{
-		id string
-		tx string
-		dl int64
+		Id string `json:"id"`
+		Tx string `json:"tx"`
+		Dl int64 `json:"dl;omitempty"`
 	} {}
 
 	err := json.Unmarshal(b, &dto)
@@ -128,11 +128,11 @@ func (i ItemContext) UnmarshalJSON(b []byte) error {
 		return errors.Wrap(err, "")
 	}
 
-	i.Ci = mockClientIdentity{dto.id}
-	i.TxName = dto.tx
+	i.Ci = mockClientIdentity{dto.Id}
+	i.TxName = dto.Tx
 
-	if dto.dl > 0 {
-		*(i.Deadline) = time.Unix(dto.dl, 0 )
+	if dto.Dl > 0 {
+		*(i.Deadline) = time.Unix(dto.Dl, 0 )
 	}
 
 	return nil

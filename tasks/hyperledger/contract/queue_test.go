@@ -253,16 +253,38 @@ func Test_newQItem(t *testing.T) {
 }
 
 func Test_newQItemFromByte(t *testing.T) {
+	ctx := getMockCtx(t)
+	wantCtx := fmt.Sprintf(`{"id":"%s","tx":"%s"}
+`, ci1.id, stub.TxID)
+
 	type args struct {
 		b []byte
 	}
 	tests := []struct {
 		name    string
 		args    args
-		wantI   *QItem
+		wantI   QItem
 		wantErr bool
 	}{
 		// TODO: Add test cases.
+		{"first",
+			args{append([]byte{0, 0, 0, 0, 0, 0, 0, 0}, wantCtx...),
+			},
+			QItem{Id: 0, Ctx: NewItemContext(ctx)},
+			false,
+		},
+		{"second",
+			args{	append([]byte{0, 0, 0, 0, 0, 0, 3, 231}, wantCtx...),
+			},
+			QItem{Id: 999, Ctx: NewItemContext(ctx)},
+			false,
+		},
+		{"third",
+			args{append([]byte{0, 0, 0, 0, 0, 0, 0, 13}, wantCtx...),
+			},
+			QItem{Id: 13, Ctx: NewItemContext(ctx)},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -271,9 +293,7 @@ func Test_newQItemFromByte(t *testing.T) {
 				t.Errorf("newQItemFromByte() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(gotI, tt.wantI) {
-				t.Errorf("newQItemFromByte() gotI = %v, want %v", gotI, tt.wantI)
-			}
+			assert.Equal(t, *gotI, tt.wantI,"newQItemFromByte() gotI = %v, want %v", gotI, tt.wantI)
 		})
 	}
 }
