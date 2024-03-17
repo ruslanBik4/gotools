@@ -19,3 +19,13 @@ func StringToBytes(s string) (b []byte) {
 	bh.Len = sh.Len
 	return b
 }
+
+const maxStartEndStringLen = 80
+
+func StartEndString(s string, startLength int) string {
+	if len(s) <= startLength || len(s) <= maxStartEndStringLen {
+		return s
+	}
+
+	return s[:startLength] + "..." + s[len(s)-startLength:]
+}

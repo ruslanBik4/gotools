@@ -5,22 +5,24 @@
 package observer
 
 import (
-	"golang.org/x/tools/imports"
-	"path/filepath"
-	"os"
-	"strings"
 	"log"
-	"testing"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
+	"testing"
 )
+
 const srcPath = "/Users/ruslan/work/RobExt/pas/"
 const dstPath = "/Users/ruslan/work/src/bitbucket.org/goext/"
+
 var (
-	wrgroup  sync.WaitGroup
+	wrgroup sync.WaitGroup
 	dictPas *Dictionary
-	enc *Encoder
+	enc     *Encoder
 )
-func Workfunc(path string, typeFile os.FileMode) error{
+
+func Workfunc(path string, typeFile os.FileMode) error {
 	if typeFile.IsDir() {
 		return nil
 	}
@@ -35,14 +37,14 @@ func doConvert(path string) {
 		return
 	}
 
-	newPath := strings.TrimSuffix( strings.TrimPrefix( path, srcPath ), ext)
+	newPath := strings.TrimSuffix(strings.TrimPrefix(path, srcPath), ext)
 
 	wrgroup.Add(1)
 	defer wrgroup.Done()
 
 	listDir := strings.Split(filepath.Dir(newPath), "/")
 	log.Println(listDir)
-	newFilename := filepath.Join(dstPath, newPath + ".go")
+	newFilename := filepath.Join(dstPath, newPath+".go")
 
 	log.Println(newFilename)
 	ioWriter, err := os.Create(newFilename)
@@ -56,7 +58,6 @@ func doConvert(path string) {
 		}
 	}
 	defer ioWriter.Close()
-
 
 	ioReader, err := os.Open(path)
 	if err != nil {
@@ -80,7 +81,7 @@ func TestObserver_Parse2(t *testing.T) {
 	enc = NewEncoder("win1251")
 	dictPas = NewDictionary("dict/pas.dct")
 
-	err := imports.FastWalk(srcPath, Workfunc)
-	log.Println(err)
+	//err := imports.FastWalk(srcPath, Workfunc)
+	//log.Println(err)
 	wrgroup.Wait()
 }

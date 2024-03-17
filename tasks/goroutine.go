@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"sync"
 )
+
 // вопрос - что выведет программа?
-var list = []int{1,3,5,6,10}
+var list = []int{1, 3, 5, 6, 10}
+
 func main() {
-	fmt.Println( "start")
+	fmt.Println("start")
 
 	wGroup := &sync.WaitGroup{}
 
@@ -19,17 +21,18 @@ func main() {
 		go func(task int) {
 			wGroup.Add(1)
 			defer wGroup.Done()
-			fmt.Println(i*val)
+			fmt.Println(i * val)
 		}(i)
 	}
 
 	wGroup.Wait()
-	fmt.Print( "finished")
+	fmt.Print("finished")
 }
+
 // еще вариант
 // здесь убраны ошибки предыдущей
 func main1() {
-	fmt.Println( "start")
+	fmt.Println("start")
 
 	wGroup := &sync.WaitGroup{}
 	broadcast := make(chan struct{})
@@ -38,18 +41,19 @@ func main1() {
 		wGroup.Add(1)
 		go func(i, val int) {
 			defer wGroup.Done()
-			fmt.Println(i*val)
-			for fl, ok := <- broadcast; ok; {
+			fmt.Println(i * val)
+			for fl, ok := <-broadcast; ok; {
 				fmt.Println(fl)
 			}
 
 		}(i, val)
 	}
 
-	broadcast <- nil
+	broadcast <- struct{}{}
 
 	wGroup.Wait()
-	fmt.Print( "finished")
+	fmt.Print("finished")
 	close(broadcast)
 }
+
 // сюда же оп. вопрос - как сделать, чтобы все гоурутины сделали принт?

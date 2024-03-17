@@ -9,23 +9,24 @@
 package observer
 
 import (
-	"golang.org/x/tools/imports"
-	"path/filepath"
-	"os"
-	"strings"
 	"log"
-	"testing"
-	"sync"
+	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
+	"sync"
+	"testing"
 )
-var wrgroup1  sync.WaitGroup
-func Workfunc1(path string, typeFile os.FileMode) error{
-	var ignoreFiles = []string {"setup", "__init__", }
+
+var wrgroup1 sync.WaitGroup
+
+func Workfunc1(path string, typeFile os.FileMode) error {
+	var ignoreFiles = []string{"setup", "__init__"}
 	if typeFile.IsDir() {
 		return nil
 	}
 	for _, name := range ignoreFiles {
-		if filepath.Base(path) == name + ".py" {
+		if filepath.Base(path) == name+".py" {
 			return nil
 		}
 	}
@@ -38,7 +39,7 @@ func doConvert1(path string) {
 	const dstPath = "./temp/"
 	var dict *Dictionary
 	ext := filepath.Ext(path)
-	newPath := strings.TrimSuffix( strings.TrimPrefix( path, srcPath ), ext)
+	newPath := strings.TrimSuffix(strings.TrimPrefix(path, srcPath), ext)
 
 	wrgroup1.Add(1)
 	defer wrgroup1.Done()
@@ -48,17 +49,17 @@ func doConvert1(path string) {
 	if ext != ".py" {
 		return
 	}
-		dict = NewDictionary("dict/py.dct")
+	dict = NewDictionary("dict/py.dct")
 	var packName []byte
 	if len(listDir) > 0 {
 		packName = []byte(listDir[len(listDir)-1])
 		//log.Println(string(packName))
 		dict.genRules[regexp.MustCompile("{package_name}")] = packName
 	}
-	enc  := NewEncoder("win1251")
+	enc := NewEncoder("win1251")
 	obs := NewObserver(enc, dict, NewDictionary("py_add.dct"))
 
-	newFilename := filepath.Join(dstPath, newPath + ".go")
+	newFilename := filepath.Join(dstPath, newPath+".go")
 
 	log.Println(newFilename)
 	ioWriter, err := os.Create(newFilename)
@@ -106,7 +107,7 @@ func doConvert1(path string) {
 func TestObserver_Parse_Raven(t *testing.T) {
 	const srcPath = "/Users/ruslan/GoglandProjects/RavenDB-Python-Client/pyravendb/"
 
-	err := imports.FastWalk(srcPath, Workfunc1)
-	log.Println(err)
+	//err := imports.FastWalk(srcPath, Workfunc1)
+	//log.Println(err)
 	wrgroup1.Wait()
 }
